@@ -1,0 +1,109 @@
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class Main {
+    private static final String FICHIER_JSON = "ouvriers.json";
+    
+    // ... (vos autres variables et méthodes existantes)
+    
+    private static void sauvegarderOuvriers() {
+        try {
+            JSONArray jsonArray = new JSONArray();
+            
+            for (Ouvrier ouvrier : ouvriers) {
+                JSONObject jsonOuvrier = new JSONObject();
+                jsonOuvrier.put("id", ouvrier.getId());
+                jsonOuvrier.put("nom", ouvrier.getNom());
+                jsonOuvrier.put("prenom", ouvrier.getPrenom());
+                jsonOuvrier.put("dateEmbauche", ouvrier.getDateEmbauche().toString());
+                jsonOuvrier.put("salaireHoraire", ouvrier.getSalaireHoraire());
+                
+                if (ouvrier instanceof Macon) {
+                    Macon macon = (Macon) ouvrier;
+                    jsonOuvrier.put("type", "macon");
+                    jsonOuvrier.put("certification", macon.getCertification());
+                    jsonOuvrier.put("outils", new JSONArray(macon.getOutils()));
+                } else if (ouvrier instanceof Electricien) {
+                    Electricien electricien = (Electricien) ouvrier;
+                    jsonOuvrier.put("type", "electricien");
+                    jsonOuvrier.put("niveauQualification", electricien.getNiveauQualification());
+                    jsonOuvrier.put("tensionAutorisee", electricien.getTensionAutorisee());
+                } else if (ouvrier instanceof Plombier) {
+                    Plombier plombier = (Plombier) ouvrier;
+                    jsonOuvrier.put("type", "plombier");
+                    jsonOuvrier.put("specialisation", plombier.getSpecialisation());
+                    jsonOuvrier.put("outils", new JSONArray(plombier.getOutils()));
+                }
+                
+                jsonArray.put(jsonOuvrier);
+            }
+            
+            Files.write(Paths.get(FICHIER_JSON), jsonArray.toString().getBytes());
+            System.out.println("Données sauvegardées avec succès.");
+        } catch (Exception e) {
+            System.out.println("Erreur lors de la sauvegarde: " + e.getMessage());
+        }
+    }
+    
+    private static void chargerOuvriers() {
+        try {
+            if (!Files.exists(Paths.get(FICHIER_JSON))) {
+                return;
+            }
+            
+            String content = new String(Files.readAllBytes(Paths.get(FICHIER_JSON)));
+            JSONArray jsonArray = new JSONArray(content);
+            
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonOuvrier = jsonArray.getJSONObject(i);
+                
+                int id = jsonOuvrier.getInt("id");
+                String nom = jsonOuvrier.getString("nom");
+                String prenom = jsonOuvrier.getString("prenom");
+                LocalDate dateEmbauche = LocalDate.parse(jsonOuvrier.getString("dateEmbauche"));
+                double salaireHoraire = jsonOuvrier.getDouble("salaireHoraire");
+                
+                String type = jsonOuvrier.getString("type");
+                
+                switch (type) {
+                    case "macon":
+                        String certification = jsonOuvrier.getString("certification");
+                        JSONArray outilsMacon = jsonOuvrier.getJSONArray("outils");
+                        List<String> outilsListMacon = new ArrayList<>();
+                        for (int j = 0; j < outilsMacon.length(); j++) {
+                            outilsListMacon.add(outilsMacon.getString(j));
+                        }
+                        ouvriers.add(new Macon(id, nom, prenom, dateEmbauche, salaireHoraire, certification, outilsListMacon));
+                        break;
+                        
+                    case "electricien":
+                        String niveau = jsonOuvrier.getString("niveauQualification");
+                        String tension = jsonOuvrier.getString("tensionAutorisee");
+                        ouvriers.add(new Electricien(id, nom, prenom, dateEmbauche, salaireHoraire, niveau, tension));
+                        break;
+                        
+                    case "plombier":
+                        String specialisation = jsonOuvrier.getString("specialisation");
+                        JSONArray outilsPlombier = jsonOuvrier.getJSONArray("outils");
+                        List<String> outilsListPlombier = new ArrayList<>();
+                        for (int j = 0; j < outilsPlombier.length(); j++) {
+                            outilsListPlombier.add(outilsPlombier.getString(j));
+                        }
+                        ouvriers.add(new Plombier(id, nom, prenom, dateEmbauche, salaireHoraire, specialisation, outilsListPlombier));
+                        break;
+                }
+                
+                // Mettre à jour nextId pour éviter les doublons
+                if (id >= nextId) {
+                    nextId = id + 1;
+                }
+            }
+            
+            System.out.println("Données chargées avec succès.");
+        } catch (Exception e) {
+            System.out.println("Erreur lors du chargement: " + e.getMessage());
+        }
+    }
+}
